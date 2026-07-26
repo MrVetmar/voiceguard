@@ -54,25 +54,30 @@ async def connect_if_needed(client: discord.Client, guild_id: int, channel_id: i
 
     voice_client: discord.VoiceClient = discord.utils.get(client.voice_clients, guild=guild)
 
-    if voice_client and voice_client.is_connected():
-        if voice_client.channel.id == channel_id:
-            if _last_status != "in_target":
-                logger.info("Already in target channel")
-                _last_status = "in_target"
+    if voice_client:
+        if voice_client.is_connected():
+            if voice_client.channel.id == channel_id:
+                if _last_status != "in_target":
+                    logger.info("Already in target channel")
+                    _last_status = "in_target"
+            else:
+                logger.warning(f"Connected to wrong channel ({voice_client.channel.name}). Moving to target...")
+                try:
+                    await voice_client.move_to(channel, self_mute=True, self_deaf=True)
+                    logger.info(f"Joined voice channel (Muted & Deafened)")
+                    _last_status = "in_target"
+                except Exception as e:
+                    logger.error(f"Failed to move to target channel: {e}")
+                    _last_status = "move_failed"
         else:
-            logger.warning(f"Connected to wrong channel ({voice_client.channel.name}). Moving to target...")
-            try:
-                await voice_client.move_to(channel, self_mute=True, self_deaf=True)
-                logger.info(f"Joined voice channel (Muted & Deafened)")
-                _last_status = "in_target"
-            except Exception as e:
-                logger.error(f"Failed to move to target channel: {e}")
-                _last_status = "move_failed"
+            if _last_status != "reconnecting_auto":
+                logger.info("Voice connection dropped, waiting for discord.py to auto-reconnect...")
+                _last_status = "reconnecting_auto"
     else:
         if _last_status == "in_target":
             logger.warning("Disconnected from voice")
             
-        logger.info(f"Reconnecting..." if _last_status else f"Connecting to voice channel...")
+        logger.info(f"Connecting to voice channel...")
         try:
             await channel.connect(self_mute=True, self_deaf=True)
             logger.info("Joined voice channel (Muted & Deafened)")
