@@ -1,0 +1,14 @@
+{
+    "token": "YOUR_DISCORD_USER_TOKEN_HERE",
+    "guild_id": 0,
+    "voice_channel_id": 0,
+    "check_interval": 5,
+    "schedule": {
+        "enabled": true,
+        "start_time": "09:00",
+        "end_time": "23:00",
+        "timezone": "Europe/Istanbul"
+    },
+    "greeting_channel_id": 0,
+    "nvidia_api_key": "YOUR_NVIDIA_API_KEY_HERE"
+}
