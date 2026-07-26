@@ -1,4 +1,5 @@
-discord.py-self>=2.1.0
+discord.py-self[voice]>=2.1.0
+dave.py
 PyNaCl>=1.5.0
 openai>=1.0.0
 aiohttp>=3.9.0
