@@ -99,8 +99,8 @@ class VoiceKeeperClient(discord.Client):
                 logger.error(f"Failed to reply to greeting: {e}")
             return
 
-        # --- 2. Check for "hb" (hoş bulduk) -> start AI chat ---
-        hb_pattern = re.compile(r'\b(hb|hoş bulduk|hoşbulduk|hoş bulduk\.?)\b', re.IGNORECASE)
+        # --- 2. Check for "hb" (hoş bulduk/hoş buldum) -> start AI chat ---
+        hb_pattern = re.compile(r'\b(hb|hoş bulduk|hoşbulduk|hoş buldum|hoşbuldum|hoş bulduk\.|hoş buldum\.)\b', re.IGNORECASE)
         
         if hb_pattern.search(content):
             logger.info(f"'hb' detected from {username}, starting AI conversation")
