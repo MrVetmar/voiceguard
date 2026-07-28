@@ -16,6 +16,7 @@ os.environ["PANEL_ORIGINS"] = "https://user.github.io"
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aiohttp.test_utils import TestClient, TestServer
+from chat_ai import ChatAI
 from config_store import store, ConfigError
 import web_server, runtime_state, logger as logmod
 
@@ -25,7 +26,13 @@ def check(name, cond, extra=""):
     print(("  ok  " if cond else "  FAIL") + f"  {name}" + (f"  -> {extra}" if extra and not cond else ""))
 
 
-class FakeChatAI:
+class FakeChatAI(ChatAI):
+    """Gercek ChatAI - sadece sohbet sayaci sabitlenmis (anahtarsiz, API cagirmaz).
+
+    Sahte bir sinif yerine gercegini kullanmak, web_server'in bekledigi
+    arayuz degistiginde testin bunu yakalamasini saglar.
+    """
+    def __init__(self): super().__init__("")
     def active_conversation_count(self): return 3
 
 class FakeClient:
@@ -123,6 +130,8 @@ async def test_api():
         st = await r.json()
         check("/api/status calisiyor", r.status == 200 and "uptime_seconds" in st, st)
         check("aktif sohbet sayisi geliyor", st["active_conversations"] == 3, st.get("active_conversations"))
+        check("AI durumu status'e dahil",
+              isinstance(st.get("ai"), dict) and "rate_limited" in st["ai"], st.get("ai"))
 
         r = await cl.post("/api/config", headers=H, json={"check_interval": 12})
         check("POST /api/config kaydediyor", r.status == 200 and (await r.json())["check_interval"] == 12)

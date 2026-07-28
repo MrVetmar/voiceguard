@@ -168,11 +168,14 @@ async def handle_post_config(request: web.Request) -> web.StreamResponse:
 async def handle_status(request: web.Request) -> web.StreamResponse:
     client = request.app["client"]
     active = 0
+    ai_status = None
     chat_ai = getattr(client, "chat_ai", None)
     if chat_ai is not None:
         active = chat_ai.active_conversation_count()
+        ai_status = chat_ai.ai_status()
 
     snapshot = runtime_state.snapshot(active_conversations=active)
+    snapshot["ai"] = ai_status
     snapshot["config"] = store.public()
     snapshot["log_subscribers"] = broadcaster.subscriber_count
     return web.json_response(snapshot)

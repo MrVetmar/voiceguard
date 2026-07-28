@@ -560,6 +560,7 @@
       ["Calisma Suresi", fmtDuration(s.uptime_seconds)],
       ["Bu Durumda", guild.since ? fmtDuration(s.server_time - guild.since) : "—"],
       ["Aktif Sohbet", s.active_conversations ?? 0],
+      ["AI Durumu", describeAi(s.ai)],
       ["Son Hata", s.last_error ? `${fmtClock(s.last_error.at)} · ${s.last_error.message}` : "yok"],
     ];
     $("stats").innerHTML = cells.map(([k, v]) =>
@@ -570,6 +571,13 @@
     else if (["stopped", "outside_schedule"].includes(guild.status)) setConn("warn", "pasif");
     else if (s.discord?.ready) setConn("warn", labels[guild.status] || "bekliyor");
     else setConn("off", "discord baglantisi yok");
+  }
+
+  function describeAi(ai) {
+    if (!ai) return "—";
+    if (!ai.configured) return "anahtar yok";
+    if (ai.rate_limited) return `hiz siniri · ${fmtDuration(ai.cooldown_remaining)} bekliyor`;
+    return `hazir · ${ai.requests_last_minute}/${ai.rate_limit_per_min} istek/dk`;
   }
 
   function esc(str) {
