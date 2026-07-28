@@ -201,6 +201,23 @@
   #setup .hint { font-size: .78rem; color: var(--muted); margin: -.5rem 0 .9rem; }
   .hidden { display: none !important; }
 
+  #setupError {
+    background: rgba(239, 68, 68, .1);
+    border: 1px solid rgba(239, 68, 68, .35);
+    border-radius: 10px;
+    padding: .8rem .9rem;
+    margin-bottom: 1rem;
+    font-size: .82rem;
+    line-height: 1.55;
+  }
+  #setupError .title { font-weight: 700; color: #fca5a5; margin-bottom: .35rem; }
+  #setupError ul { margin: .4rem 0 0; padding-left: 1.1rem; color: var(--muted); }
+  #setupError li { margin-bottom: .2rem; }
+  #setupError code {
+    background: rgba(0,0,0,.35); padding: .1rem .3rem;
+    border-radius: 4px; font-family: var(--mono); font-size: .95em; color: #e2e8f0;
+  }
+
   #toast {
     position: fixed; top: 1rem; right: 1rem; z-index: 50;
     padding: .8rem 1.1rem; border-radius: 12px; font-weight: 600; font-size: .88rem;
@@ -219,6 +236,8 @@
 <div id="setup" class="card hidden">
   <h1><span>VoiceGuard</span></h1>
   <p class="sub" style="margin-bottom:1.25rem">Panele baglanmak icin bot API adresini ve erisim anahtarini gir.</p>
+
+  <div id="setupError" class="hidden"></div>
 
   <div class="field">
     <label for="setupUrl">API Adresi</label>
@@ -422,9 +441,66 @@
     $("apiLabel").textContent = apiUrl;
   }
 
+  function showSetupError(title, items) {
+    const box = $("setupError");
+    box.innerHTML = `<div class="title">${esc(title)}</div>` +
+      (items?.length ? `<ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>` : "");
+    box.classList.remove("hidden");
+  }
+  function clearSetupError() { $("setupError").classList.add("hidden"); }
+
+  /**
+   * "Failed to fetch" tarayicinin tek bir genel hatasidir; ag hatasi, karisik
+   * icerik ve CORS engeli ayni mesaji verir. Asamali kontrolle hangisi
+   * oldugunu ayirt ederiz.
+   */
+  async function diagnoseConnection(url) {
+    // 1) Karisik icerik: HTTPS sayfadan HTTP istegi tarayici tarafindan engellenir.
+    if (location.protocol === "https:" && /^http:\/\//i.test(url)) {
+      return {
+        title: "Adres http:// — tarayici bu istegi engelliyor",
+        items: [
+          `Panel <code>https://</code> uzerinden acik, API adresi <code>http://</code>.`,
+          `Railway adresini <code>https://</code> ile yaz.`,
+        ],
+      };
+    }
+
+    // 2) Sunucu hic cevap veriyor mu? no-cors istegi CORS'tan bagimsiz olarak
+    //    baglanti kurulabildiyse basarili olur (opaque cevap).
+    let reachable = false;
+    try {
+      await fetch(url + "/api/health", { mode: "no-cors", cache: "no-store" });
+      reachable = true;
+    } catch { /* ulasilamiyor */ }
+
+    if (!reachable) {
+      return {
+        title: "Sunucuya hic ulasilamiyor",
+        items: [
+          `Adres dogru mu: <code>${esc(url)}</code>`,
+          `Railway'de servise <b>public domain</b> uretilmis mi (Settings → Networking → Generate Domain)`,
+          `Servis <b>web</b> olarak calisiyor mu ve deploy basarili mi (Deployments sekmesi)`,
+        ],
+      };
+    }
+
+    // 3) Sunucu ayakta ama tarayici cevabi okuyamiyorsa CORS engelidir.
+    return {
+      title: "Sunucu ayakta ama tarayici CORS nedeniyle engelliyor",
+      items: [
+        `Railway'de <code>PANEL_ORIGINS</code> tam olarak su olmali:`,
+        `<code>${esc(location.origin)}</code>`,
+        `Sonunda <code>/</code> veya yol (<code>/voiceguard</code>) olmamali.`,
+        `Emin degilsen degiskeni tamamen sil — varsayilan <code>*</code> tum kaynaklara izin verir.`,
+      ],
+    };
+  }
+
   $("setupBtn").addEventListener("click", async () => {
     const url = $("setupUrl").value.trim().replace(/\/+$/, "");
     const key = $("setupKey").value.trim();
+    clearSetupError();
     if (!url || !key) return toast("Adres ve anahtar zorunlu", "err");
     if (!/^https?:\/\//i.test(url)) return toast("Adres http:// veya https:// ile baslamali", "err");
 
@@ -439,7 +515,18 @@
       start();
       toast("Baglanti kuruldu");
     } catch (err) {
-      toast(err.message, "err");
+      if (err.name === "TypeError") {
+        // Ag/CORS/karisik icerik: hangisi oldugunu tespit et.
+        const diag = await diagnoseConnection(url);
+        showSetupError(diag.title, diag.items);
+        toast("Baglanti kurulamadi", "err");
+      } else {
+        // Sunucu cevap verdi ama reddetti (401 / 503 gibi).
+        showSetupError(err.message, err.message.includes("PANEL_API_KEY")
+          ? [`Railway'de <code>PANEL_API_KEY</code> degiskenini tanimlayip servisi yeniden baslat.`]
+          : [`Girdigin anahtar Railway'deki <code>PANEL_API_KEY</code> degeriyle birebir ayni olmali.`]);
+        toast(err.message, "err");
+      }
     } finally {
       btn.disabled = false; btn.textContent = "Baglan";
     }
