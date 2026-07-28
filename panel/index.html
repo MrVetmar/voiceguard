@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>VoiceGuard · Kontrol Paneli</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --surface: #131c31;
+    --surface-2: #1b2540;
+    --border: rgba(148, 163, 184, .16);
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --success: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 1.5rem 1rem 3rem;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    background-image:
+      radial-gradient(at 10% 0%, rgba(99,102,241,.12) 0, transparent 45%),
+      radial-gradient(at 90% 5%, rgba(236,72,153,.08) 0, transparent 40%);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin: 0;
+    letter-spacing: -.02em;
+  }
+  h1 span {
+    background: linear-gradient(135deg, #a5b4fc, #6366f1);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .sub { color: var(--muted); font-size: .85rem; margin: .15rem 0 0; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .card h2 {
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    margin: 0 0 1rem;
+    font-weight: 600;
+  }
+
+  .grid { display: grid; gap: 1rem; }
+  @media (min-width: 820px) { .grid.two { grid-template-columns: 1fr 1fr; } }
+
+  /* --- durum --- */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem .75rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 600;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.on   { background: var(--success); box-shadow: 0 0 0 3px rgba(16,185,129,.2); }
+  .dot.warn { background: var(--warn);    box-shadow: 0 0 0 3px rgba(245,158,11,.2); }
+  .dot.off  { background: var(--danger);  box-shadow: 0 0 0 3px rgba(239,68,68,.2); }
+  .dot.live { animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .75rem; }
+  .stat {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .75rem .85rem;
+  }
+  .stat .k { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .stat .v { font-size: 1rem; font-weight: 600; margin-top: .2rem; word-break: break-word; }
+
+  /* --- form --- */
+  label { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: .35rem; }
+  input[type="text"], input[type="number"], input[type="time"], input[type="password"] {
+    width: 100%;
+    padding: .65rem .8rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: .95rem;
+    font-family: inherit;
+  }
+  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
+  .field { margin-bottom: .9rem; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+
+  .switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .8rem 1rem;
+    margin-bottom: .9rem;
+  }
+  .switch-row .t { font-weight: 600; font-size: .92rem; }
+  .switch-row .d { font-size: .75rem; color: var(--muted); }
+  .switch { position: relative; width: 46px; height: 26px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0; cursor: pointer;
+    background: rgba(148,163,184,.25); border-radius: 999px; transition: .25s;
+  }
+  .slider::before {
+    content: ""; position: absolute; height: 18px; width: 18px; left: 4px; bottom: 4px;
+    background: #cbd5e1; border-radius: 50%; transition: .25s;
+  }
+  .switch input:checked + .slider { background: var(--success); }
+  .switch input:checked + .slider::before { transform: translateX(20px); background: #fff; }
+
+  button {
+    padding: .7rem 1.1rem;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-size: .9rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .2s, transform .1s, opacity .2s;
+    background: var(--primary);
+    color: #fff;
+  }
+  button:hover:not(:disabled) { background: var(--primary-hover); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.ghost { background: transparent; border-color: var(--border); color: var(--text); }
+  button.ghost:hover:not(:disabled) { background: var(--surface-2); }
+  button.danger { background: var(--danger); }
+  button.danger:hover:not(:disabled) { background: #dc2626; }
+  .actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+
+  /* --- log --- */
+  #logBox {
+    background: #060b17;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .75rem;
+    height: 340px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: .78rem;
+    line-height: 1.6;
+  }
+  .log-line { display: flex; gap: .6rem; padding: .1rem 0; }
+  .log-line .ts { color: #475569; flex: none; }
+  .log-line .lv { flex: none; width: 4.5em; font-weight: 700; }
+  .log-line .msg { color: #cbd5e1; word-break: break-word; white-space: pre-wrap; }
+  .lv-INFO { color: #38bdf8; }
+  .lv-WARNING { color: var(--warn); }
+  .lv-ERROR, .lv-CRITICAL { color: var(--danger); }
+  .lv-DEBUG { color: var(--muted); }
+
+  .log-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
+  .log-head .opts { display: flex; align-items: center; gap: .75rem; font-size: .78rem; color: var(--muted); }
+  .log-head label { display: flex; align-items: center; gap: .35rem; margin: 0; text-transform: none; letter-spacing: 0; }
+
+  /* --- kurulum / bildirim --- */
+  #setup { max-width: 460px; margin: 4rem auto; }
+  #setup .hint { font-size: .78rem; color: var(--muted); margin: -.5rem 0 .9rem; }
+  .hidden { display: none !important; }
+
+  #toast {
+    position: fixed; top: 1rem; right: 1rem; z-index: 50;
+    padding: .8rem 1.1rem; border-radius: 12px; font-weight: 600; font-size: .88rem;
+    color: #fff; box-shadow: 0 12px 30px rgba(0,0,0,.45);
+    transform: translateX(calc(100% + 2rem)); transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    max-width: min(90vw, 380px);
+  }
+  #toast.show { transform: translateX(0); }
+  #toast.ok { background: var(--success); }
+  #toast.err { background: var(--danger); }
+</style>
+</head>
+<body>
+
+<!-- ============ KURULUM ============ -->
+<div id="setup" class="card hidden">
+  <h1><span>VoiceGuard</span></h1>
+  <p class="sub" style="margin-bottom:1.25rem">Panele baglanmak icin bot API adresini ve erisim anahtarini gir.</p>
+
+  <div class="field">
+    <label for="setupUrl">API Adresi</label>
+    <input type="text" id="setupUrl" placeholder="https://xxx.up.railway.app" autocomplete="off">
+  </div>
+  <p class="hint">Railway'deki servisinin public URL'i. Sonunda / olmasin.</p>
+
+  <div class="field">
+    <label for="setupKey">Erisim Anahtari</label>
+    <input type="password" id="setupKey" placeholder="PANEL_API_KEY" autocomplete="off">
+  </div>
+  <p class="hint">Railway'de <code>PANEL_API_KEY</code> olarak tanimladigin deger. Sadece bu tarayicida saklanir.</p>
+
+  <div class="actions">
+    <button id="setupBtn">Baglan</button>
+  </div>
+</div>
+
+<!-- ============ PANEL ============ -->
+<div id="app" class="wrap hidden">
+  <header>
+    <div>
+      <h1><span>VoiceGuard</span></h1>
+      <p class="sub" id="apiLabel"></p>
+    </div>
+    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+      <span class="pill"><span class="dot" id="connDot"></span><span id="connText">baglaniliyor…</span></span>
+      <button class="ghost" id="logoutBtn">Cikis</button>
+    </div>
+  </header>
+
+  <!-- durum -->
+  <section class="card">
+    <h2>Canli Durum</h2>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <div class="grid two">
+    <!-- kontrol + ayarlar -->
+    <div>
+      <section class="card">
+        <h2>Kontrol</h2>
+        <div class="switch-row">
+          <div>
+            <div class="t">Bot Aktif</div>
+            <div class="d">Kapatirsan ses kanalindan hemen cikar</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="enabledSw"><span class="slider"></span></label>
+        </div>
+        <div class="actions">
+          <button class="ghost" id="reconnectBtn">Yeniden Baglan</button>
+          <button class="ghost" id="refreshBtn">Durumu Yenile</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Ayarlar</h2>
+
+        <div class="switch-row">
+          <div>
+            <div class="t">Zamanlama</div>
+            <div class="d">Kapaliysa bot 7/24 kanalda kalir</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="schedSw"><span class="slider"></span></label>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="startTime">Baslangic</label>
+            <input type="time" id="startTime">
+          </div>
+          <div class="field">
+            <label for="endTime">Bitis</label>
+            <input type="time" id="endTime">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="timezone">Saat Dilimi</label>
+          <input type="text" id="timezone" placeholder="Europe/Istanbul">
+        </div>
+        <div class="field">
+          <label for="guildId">Sunucu (Guild) ID</label>
+          <input type="text" inputmode="numeric" id="guildId">
+        </div>
+        <div class="field">
+          <label for="channelId">Ses Kanali ID</label>
+          <input type="text" inputmode="numeric" id="channelId">
+        </div>
+        <div class="field">
+          <label for="greetingChannelId">Selamlasma Kanali ID</label>
+          <input type="text" inputmode="numeric" id="greetingChannelId">
+        </div>
+        <div class="field">
+          <label for="checkInterval">Kontrol Araligi (saniye)</label>
+          <input type="number" id="checkInterval" min="1" max="300">
+        </div>
+
+        <div class="actions">
+          <button id="saveBtn">Kaydet</button>
+          <button class="ghost" id="revertBtn">Geri Al</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- loglar -->
+    <section class="card">
+      <div class="log-head">
+        <h2 style="margin:0">Canli Log</h2>
+        <div class="opts">
+          <label><input type="checkbox" id="autoScroll" checked> otomatik kaydir</label>
+          <button class="ghost" id="clearLogBtn" style="padding:.35rem .7rem;font-size:.78rem">Temizle</button>
+        </div>
+      </div>
+      <div id="logBox"></div>
+    </section>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const LS_URL = "vg.apiUrl";
+  const LS_KEY = "vg.apiKey";
+  const POLL_MS = 5000;
+  const MAX_LOG_LINES = 600;
+
+  let apiUrl = localStorage.getItem(LS_URL) || "";
+  let apiKey = localStorage.getItem(LS_KEY) || "";
+  let config = null;          // sunucudan gelen son ayarlar
+  let dirty = false;          // kullanici formu degistirdi mi
+  let pollTimer = null;
+  let logAbort = null;
+  let logRetry = 0;
+  let lastSeq = 0;
+
+  const $ = (id) => document.getElementById(id);
+  const setupEl = $("setup"), appEl = $("app");
+
+  // ---------------------------------------------------------------- yardimci
+  function toast(msg, kind = "ok") {
+    const el = $("toast");
+    el.textContent = msg;
+    el.className = `show ${kind}`;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.className = kind, 3200);
+  }
+
+  function fmtDuration(sec) {
+    if (sec == null || !isFinite(sec)) return "—";
+    sec = Math.max(0, Math.floor(sec));
+    const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600),
+          m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    if (d) return `${d}g ${h}s`;
+    if (h) return `${h}s ${m}dk`;
+    if (m) return `${m}dk ${s}sn`;
+    return `${s}sn`;
+  }
+
+  function fmtClock(epoch) {
+    if (!epoch) return "—";
+    return new Date(epoch * 1000).toLocaleTimeString("tr-TR");
+  }
+
+  async function api(path, options = {}) {
+    const res = await fetch(apiUrl + path, {
+      ...options,
+      headers: { "Content-Type": "application/json", "X-API-Key": apiKey, ...(options.headers || {}) },
+    });
+    if (res.status === 401) throw new Error("Erisim anahtari gecersiz");
+    if (res.status === 503) throw new Error("Sunucuda PANEL_API_KEY tanimli degil");
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const body = await res.json();
+        if (body.detail) detail = body.detail;
+        else if (body.error) detail = body.error;
+      } catch { /* govde JSON degil */ }
+      throw new Error(detail);
+    }
+    return res.status === 204 ? null : res.json();
+  }
+
+  // ---------------------------------------------------------------- kurulum
+  function showSetup(message) {
+    stopPolling();
+    stopLogStream();
+    setupEl.classList.remove("hidden");
+    appEl.classList.add("hidden");
+    $("setupUrl").value = apiUrl;
+    $("setupKey").value = apiKey;
+    if (message) toast(message, "err");
+  }
+
+  function showApp() {
+    setupEl.classList.add("hidden");
+    appEl.classList.remove("hidden");
+    $("apiLabel").textContent = apiUrl;
+  }
+
+  $("setupBtn").addEventListener("click", async () => {
+    const url = $("setupUrl").value.trim().replace(/\/+$/, "");
+    const key = $("setupKey").value.trim();
+    if (!url || !key) return toast("Adres ve anahtar zorunlu", "err");
+    if (!/^https?:\/\//i.test(url)) return toast("Adres http:// veya https:// ile baslamali", "err");
+
+    const btn = $("setupBtn");
+    btn.disabled = true; btn.textContent = "Baglaniliyor…";
+    apiUrl = url; apiKey = key;
+    try {
+      await api("/api/config");
+      localStorage.setItem(LS_URL, apiUrl);
+      localStorage.setItem(LS_KEY, apiKey);
+      showApp();
+      start();
+      toast("Baglanti kuruldu");
+    } catch (err) {
+      toast(err.message, "err");
+    } finally {
+      btn.disabled = false; btn.textContent = "Baglan";
+    }
+  });
+
+  $("logoutBtn").addEventListener("click", () => {
+    localStorage.removeItem(LS_KEY);
+    apiKey = "";
+    showSetup();
+  });
+
+  // ---------------------------------------------------------------- durum
+  function setConn(state, text) {
+    $("connDot").className = `dot ${state}` + (state === "on" ? " live" : "");
+    $("connText").textContent = text;
+  }
+
+  function renderStatus(s) {
+    const guild = (s.guilds || [])[0] || {};
+    const labels = {
+      connected: "Kanalda", connecting: "Baglaniyor", reconnecting: "Yeniden baglaniyor",
+      stopped: "Durduruldu", outside_schedule: "Zamanlama disinda", unconfigured: "Yapilandirilmadi",
+      guild_not_found: "Sunucu bulunamadi", channel_not_found: "Kanal bulunamadi",
+      connect_failed: "Baglanti hatasi", move_failed: "Tasima hatasi", idle: "Bosta",
+    };
+    const cells = [
+      ["Ses Durumu", labels[guild.status] || guild.status || "—"],
+      ["Kanal", guild.channel_name || "—"],
+      ["Sunucu", guild.guild_name || "—"],
+      ["Hesap", s.discord?.user || "—"],
+      ["Calisma Suresi", fmtDuration(s.uptime_seconds)],
+      ["Bu Durumda", guild.since ? fmtDuration(s.server_time - guild.since) : "—"],
+      ["Aktif Sohbet", s.active_conversations ?? 0],
+      ["Son Hata", s.last_error ? `${fmtClock(s.last_error.at)} · ${s.last_error.message}` : "yok"],
+    ];
+    $("stats").innerHTML = cells.map(([k, v]) =>
+      `<div class="stat"><div class="k">${esc(k)}</div><div class="v">${esc(String(v))}</div></div>`
+    ).join("");
+
+    if (guild.connected) setConn("on", "kanalda");
+    else if (["stopped", "outside_schedule"].includes(guild.status)) setConn("warn", "pasif");
+    else if (s.discord?.ready) setConn("warn", labels[guild.status] || "bekliyor");
+    else setConn("off", "discord baglantisi yok");
+  }
+
+  function esc(str) {
+    return String(str).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  async function poll() {
+    try {
+      const status = await api("/api/status");
+      renderStatus(status);
+      if (!dirty && status.config) applyConfig(status.config);
+    } catch (err) {
+      setConn("off", "ulasilamiyor");
+      if (/anahtar/i.test(err.message)) showSetup(err.message);
+    }
+  }
+
+  function startPolling() {
+    stopPolling();
+    poll();
+    pollTimer = setInterval(poll, POLL_MS);
+  }
+  function stopPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  // ---------------------------------------------------------------- ayarlar
+  function applyConfig(cfg) {
+    config = cfg;
+    $("enabledSw").checked = !!cfg.enabled;
+    $("schedSw").checked = !!cfg.schedule?.enabled;
+    $("startTime").value = cfg.schedule?.start_time || "09:00";
+    $("endTime").value = cfg.schedule?.end_time || "23:00";
+    $("timezone").value = cfg.schedule?.timezone || "Europe/Istanbul";
+    $("guildId").value = cfg.guild_id || "";
+    $("channelId").value = cfg.voice_channel_id || "";
+    $("greetingChannelId").value = cfg.greeting_channel_id || "";
+    $("checkInterval").value = cfg.check_interval ?? 5;
+    dirty = false;
+  }
+
+  // Form alanlarindaki degisiklik, poll'un yazdiklarini ezmesini engeller.
+  ["startTime", "endTime", "timezone", "guildId", "channelId", "greetingChannelId", "checkInterval", "schedSw"]
+    .forEach((id) => $(id).addEventListener("input", () => { dirty = true; }));
+
+  $("saveBtn").addEventListener("click", async () => {
+    const btn = $("saveBtn");
+    btn.disabled = true; btn.textContent = "Kaydediliyor…";
+    try {
+      const updated = await api("/api/config", {
+        method: "POST",
+        body: JSON.stringify({
+          guild_id: $("guildId").value.trim() || 0,
+          voice_channel_id: $("channelId").value.trim() || 0,
+          greeting_channel_id: $("greetingChannelId").value.trim() || 0,
+          check_interval: $("checkInterval").value || 5,
+          schedule: {
+            enabled: $("schedSw").checked,
+            start_time: $("startTime").value,
+            end_time: $("endTime").value,
+            timezone: $("timezone").value.trim(),
+          },
+        }),
+      });
+      applyConfig(updated);
+      toast("Ayarlar kaydedildi, aninda uygulandi");
+    } catch (err) {
+      toast(err.message, "err");
+    } finally {
+      btn.disabled = false; btn.textContent = "Kaydet";
+    }
+  });
+
+  $("revertBtn").addEventListener("click", () => {
+    if (config) applyConfig(config);
+    toast("Kaydedilmemis degisiklikler geri alindi");
+  });
+
+  // ---------------------------------------------------------------- kontrol
+  async function control(action) {
+    return api("/api/control", { method: "POST", body: JSON.stringify({ action }) });
+  }
+
+  $("enabledSw").addEventListener("change", async (event) => {
+    const wanted = event.target.checked;
+    event.target.disabled = true;
+    try {
+      await control(wanted ? "start" : "stop");
+      toast(wanted ? "Bot baslatildi" : "Bot durduruldu");
+      poll();
+    } catch (err) {
+      event.target.checked = !wanted;   // sunucu reddettiyse anahtari geri al
+      toast(err.message, "err");
+    } finally {
+      event.target.disabled = false;
+    }
+  });
+
+  $("reconnectBtn").addEventListener("click", async (event) => {
+    event.target.disabled = true;
+    try {
+      await control("reconnect");
+      toast("Yeniden baglanma tetiklendi");
+    } catch (err) {
+      toast(err.message, "err");
+    } finally {
+      event.target.disabled = false;
+    }
+  });
+
+  $("refreshBtn").addEventListener("click", poll);
+
+  // ---------------------------------------------------------------- loglar
+  function appendLog(entry) {
+    if (entry.seq && entry.seq <= lastSeq) return;   // yeniden baglanmada tekrari onle
+    if (entry.seq) lastSeq = entry.seq;
+
+    const box = $("logBox");
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+
+    const line = document.createElement("div");
+    line.className = "log-line";
+    line.innerHTML =
+      `<span class="ts">${esc(fmtClock(entry.at))}</span>` +
+      `<span class="lv lv-${esc(entry.level)}">${esc(entry.level)}</span>` +
+      `<span class="msg">${esc(entry.message)}</span>`;
+    box.appendChild(line);
+
+    while (box.childElementCount > MAX_LOG_LINES) box.removeChild(box.firstChild);
+    if ($("autoScroll").checked && atBottom) box.scrollTop = box.scrollHeight;
+  }
+
+  /**
+   * SSE akisini EventSource yerine fetch ile okuruz; EventSource ozel baslik
+   * gonderemedigi icin API anahtarini URL'e koymak gerekirdi.
+   */
+  async function streamLogs() {
+    stopLogStream();
+    logAbort = new AbortController();
+    try {
+      const res = await fetch(apiUrl + "/api/logs/stream", {
+        headers: { "X-API-Key": apiKey },
+        signal: logAbort.signal,
+      });
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      logRetry = 0;
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let split;
+        while ((split = buffer.indexOf("\n\n")) !== -1) {
+          const chunk = buffer.slice(0, split);
+          buffer = buffer.slice(split + 2);
+          for (const rawLine of chunk.split("\n")) {
+            if (!rawLine.startsWith("data:")) continue;   // ": heartbeat" atlanir
+            try { appendLog(JSON.parse(rawLine.slice(5).trim())); } catch { /* bozuk kare */ }
+          }
+        }
+      }
+      throw new Error("akis kapandi");
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      // Ustel geri cekilme ile yeniden dene (maks. 30 sn)
+      const delay = Math.min(30000, 1000 * Math.pow(2, logRetry++));
+      setTimeout(() => { if (apiKey) streamLogs(); }, delay);
+    }
+  }
+
+  function stopLogStream() {
+    if (logAbort) logAbort.abort();
+    logAbort = null;
+  }
+
+  $("clearLogBtn").addEventListener("click", () => { $("logBox").innerHTML = ""; });
+
+  // ---------------------------------------------------------------- yasam dongusu
+  function start() {
+    startPolling();
+    streamLogs();
+  }
+
+  // Sekme arka plandayken bosuna istek atma
+  document.addEventListener("visibilitychange", () => {
+    if (!apiKey || !apiUrl) return;
+    if (document.hidden) { stopPolling(); stopLogStream(); }
+    else start();
+  });
+
+  if (apiUrl && apiKey) { showApp(); start(); } else { showSetup(); }
+})();
+</script>
+</body>
+</html>

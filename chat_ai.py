@@ -60,6 +60,8 @@ IMPORTANT: Your responses must look EXACTLY like the examples above. Short, casu
             )
         # Active conversations: {user_id: ConversationData}
         self.conversations = {}
+        # Per-user locks so a spamming user can't fan out parallel API calls
+        self._locks = {}
         # Conversation timeout (10 minutes of inactivity)
         self.CONVERSATION_TIMEOUT = 600
         # Max exchanges before AI naturally wraps up
@@ -70,9 +72,33 @@ IMPORTANT: Your responses must look EXACTLY like the examples above. Short, casu
         conv = self.conversations.get(user_id)
         if conv and (time.time() - conv["last_activity"] > self.CONVERSATION_TIMEOUT):
             # Conversation expired
-            del self.conversations[user_id]
+            self.end_conversation(user_id)
             return None
         return conv
+
+    def prune_expired(self) -> int:
+        """Drop timed-out conversations. Returns how many remain active."""
+        now = time.time()
+        expired = [
+            uid
+            for uid, conv in self.conversations.items()
+            if now - conv["last_activity"] > self.CONVERSATION_TIMEOUT
+        ]
+        for uid in expired:
+            self.end_conversation(uid)
+        return len(self.conversations)
+
+    def active_conversation_count(self) -> int:
+        """Number of live conversations, used by the panel's status endpoint."""
+        return self.prune_expired()
+
+    def lock_for(self, user_id: int) -> asyncio.Lock:
+        """Serialize a single user's requests so spam can't multiply API calls."""
+        lock = self._locks.get(user_id)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[user_id] = lock
+        return lock
 
     def start_conversation(self, user_id: int, username: str):
         """Start a new conversation with a user."""
@@ -166,6 +192,8 @@ IMPORTANT: Your responses must look EXACTLY like the examples above. Short, casu
             return None
 
     def end_conversation(self, user_id: int):
-        """Manually end a conversation."""
-        if user_id in self.conversations:
-            del self.conversations[user_id]
+        """Manually end a conversation and release its lock."""
+        self.conversations.pop(user_id, None)
+        lock = self._locks.get(user_id)
+        if lock is not None and not lock.locked():
+            del self._locks[user_id]
