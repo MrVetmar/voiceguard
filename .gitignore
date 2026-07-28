@@ -8,3 +8,11 @@ env/
 *.log
 config.json
 config.json.tmp
+
+# Editor / AI arac dosyalari - projeye ait degil, yerelde kalsin
+.agents/
+.claude/skills/
+.claude/completions/
+.claude/sessions/
+.github/skills/
+skills-lock.json
